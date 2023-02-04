@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using CppSharp.AST;
 using CppSharp.Generators;
+using CppSharp.Passes;
 
 namespace CppSharp
 {
@@ -239,6 +240,9 @@ namespace CppSharp
         /// </summary>
         public HashSet<string> ExplicitlyPatchedVirtualFunctions { get; }
 
+        public PropertyDetectionMode PropertyDetectionMode { get; set; } = PropertyDetectionMode.Dictionary;
+
+        [Obsolete("Use PropertyDetectionMode instead")]
         public bool UsePropertyDetectionHeuristics { get; set; } = true;
 
         /// <summary>
