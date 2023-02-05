@@ -234,6 +234,20 @@ namespace CppSharp.Passes
         {
             foreach (Property property in properties)
             {
+                // Look at the getter/setter names and figure out the proper casing for the
+                // property name.
+                if (property.GetMethod != null || property.SetMethod != null)
+                {
+                    var casing = GetPropertyNameCasing(property);
+                    var proposedName = GetNameWithCasing(property.Name, casing);
+
+                    // Check if there are any types in the namespace or properties in the class
+                    // that can conflict with the proposed name.
+                    if (@class.FindType<Declaration>(proposedName) == null &&
+                        @class.Properties.Find(f => f.Name == proposedName) == null)
+                        property.Name = proposedName;
+                }
+
                 ProcessOverridden(@class, property);
 
                 if (!property.HasGetter)
@@ -260,6 +274,39 @@ namespace CppSharp.Passes
                 RenameConflictingMethods(@class, property);
                 CombineComments(property);
             }
+        }
+
+        private static string GetNameWithCasing(string name, RenameCasePattern pattern)
+        {
+            if (string.IsNullOrEmpty(name))
+                return name;
+
+            var firstChar = pattern switch
+            {
+                RenameCasePattern.UpperCamelCase => char.ToUpperInvariant(name[0]),
+                RenameCasePattern.LowerCamelCase => char.ToLowerInvariant(name[0]),
+                _ => throw new ArgumentOutOfRangeException(nameof(pattern), pattern, null)
+            };
+
+            return string.Concat(firstChar, name.Substring(1));
+        }
+
+        private static RenameCasePattern GetPropertyNameCasing(Property property)
+        {
+            RenameCasePattern GetCasePattern(char c) =>
+                char.IsUpper(c) ? RenameCasePattern.UpperCamelCase : RenameCasePattern.LowerCamelCase;
+
+            if (property.GetMethod != null)
+            {
+                // Prefer the casing of the getter to handle cases like this:
+                //  void prop();
+                //  bool setProp();
+                var getterName = GetPropertyName(property.GetMethod.Name);
+                return GetCasePattern(getterName[0]);
+            }
+
+            var setterName = GetPropertyName(property.SetMethod.Name);
+            return GetCasePattern(setterName[0]);
         }
 
         private static void ProcessOverridden(Class @class, Property property)
